@@ -11,9 +11,10 @@ from torch.utils.data import DataLoader
 from torchvision.datasets import MNIST
 from torchvision.utils import save_image
 
+
 # Model Hyperparameters
 dataset_path = "datasets"
-cuda = True
+cuda = torch.cuda.is_available()
 DEVICE = torch.device("cuda" if cuda else "cpu")
 batch_size = 100
 x_dim = 784
@@ -52,11 +53,10 @@ class Encoder(nn.Module):
         z = self.reparameterization(mean, log_var)
         return z, mean, log_var
 
-    def reparameterization(self, mean, var):
-        """Reparameterization trick to sample z values."""
-        epsilon = torch.randn(*var.shape)
-        return mean + var * epsilon
-
+    def reparameterization(self, mean, std):
+        """Reparameterization trick."""
+        epsilon = torch.randn_like(std)
+        return mean + std * epsilon
 
 class Decoder(nn.Module):
     """Decoder module for VAE."""
@@ -64,7 +64,7 @@ class Decoder(nn.Module):
     def __init__(self, latent_dim, hidden_dim, output_dim) -> None:
         super().__init__()
         self.FC_hidden = nn.Linear(latent_dim, hidden_dim)
-        self.FC_output = nn.Linear(latent_dim, output_dim)
+        self.FC_output = nn.Linear(hidden_dim, output_dim)
 
     def forward(self, x):
         """Forward pass of the decoder module."""
@@ -114,6 +114,7 @@ for epoch in range(epochs):
             print(batch_idx)
         x = x.view(batch_size, x_dim)
         x = x.to(DEVICE)
+        optimizer.zero_grad()
 
         x_hat, mean, log_var = model(x)
         loss = loss_function(x, x_hat, mean, log_var)
